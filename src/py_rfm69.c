@@ -23,35 +23,6 @@ test()
     return 1;
 }
 
-// module_setup is run on import of the GPIO module and calls the setup() method in c_gpio.c
-static int
-module_setup(void)
-{
-    // int result;
-    // // printf("Setup module (mmap)\n");
-
-    // // Set all gpios to input in internal direction (not the system)
-    // int i=0;
-    // for (i=0; i<54; i++)
-    //     gpio_direction[i] = -1;
-
-    // result = setup();
-    // if (result == SETUP_DEVMEM_FAIL) {
-    //     PyErr_SetString(PyExc_RuntimeError, "No access to /dev/mem. Try running as root!");
-    //     return SETUP_DEVMEM_FAIL;
-    // } else if (result == SETUP_MALLOC_FAIL) {
-    //     PyErr_NoMemory();
-    //     return SETUP_MALLOC_FAIL;
-    // } else if (result == SETUP_MMAP_FAIL) {
-    //     PyErr_SetString(PyExc_RuntimeError, "Mmap failed on module import");
-    //     return SETUP_MALLOC_FAIL;
-    // } else {
-    //     // result == SETUP_OK
-    //     return SETUP_OK;
-    // }
-    return 1;
-}
-
 // python function output(channel, value)
 static PyObject*
 py_test(PyObject *self, PyObject *args)
@@ -63,10 +34,120 @@ py_test(PyObject *self, PyObject *args)
     return Py_None;
 }
 
+static PyObject*
+py_initialize(PyObject *self, PyObject *args)
+{
+    int frequency, nodeid, networkid;
 
+    if (!PyArg_ParseTuple(args, "iii", &frequency, &nodeid, &networkid))
+        return NULL;
+
+    rfm69_initialize(frequency, nodeid, networkid);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
+py_encrypt(PyObject *self, PyObject *args)
+{
+    char *s;
+
+    if (!PyArg_ParseTuple(args, "s", &s))
+        return NULL;
+
+    rfm69_encrypt(s);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
+py_setPowerLevel(PyObject *self, PyObject *args)
+{
+    int level;
+
+    if (!PyArg_ParseTuple(args, "i", &level))
+        return NULL;
+
+    rfm69_setPowerLevel(level);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
+py_receive(PyObject *self, PyObject *args)
+{
+    rfm69_receive();
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
+py_getDataLen(PyObject *self, PyObject *args)
+{
+    PyObject *func;
+    func = Py_BuildValue("i", rfm69_getDataLen());
+    return func;
+}
+
+static PyObject*
+py_getRssi(PyObject *self, PyObject *args)
+{
+    PyObject *func;
+    func = Py_BuildValue("i", rfm69_getRssi());
+    return func;
+}
+
+static PyObject*
+py_getSenderId(PyObject *self, PyObject *args)
+{
+    PyObject *func;
+    func = Py_BuildValue("i", rfm69_getSenderId());
+    return func;
+}
+
+static PyObject*
+py_getData(PyObject *self, PyObject *args)
+{
+    PyObject *func;
+    char received[63];
+    rfm69_getData(received);
+
+    func = Py_BuildValue("s", received);
+    return func;
+}
+
+static PyObject*
+py_send(PyObject *self, PyObject *args)
+{
+    int senderId;
+    char *s;
+    int len;
+
+    if (!PyArg_ParseTuple(args, "isi", &senderId, &s, &len))
+        return NULL;
+
+    rfm69_send(senderId, (const void*) s, len, 0);
+}
 
 PyMethodDef rpi_gpio_methods[] = {
-    {"test", py_test, METH_VARARGS, "Test shit"},
+    {"test", py_test, METH_VARARGS, "Test shit n stuff"},
+    {"initialize", py_initialize, METH_VARARGS, "Initialize RFM module with Frequency, NodeID and NetworkID"},
+    {"encrypt", py_encrypt, METH_VARARGS, "Set encryption key"},
+    {"setPowerLevel", py_setPowerLevel, METH_VARARGS, "Set power level (0..31)"},
+
+    {"receive", py_receive, METH_VARARGS, "Receive Data until timeout or valid data"},
+    {"getDataLen", py_getDataLen, METH_VARARGS, "Returns number of bytes ready to be read"},
+    {"getRssi", py_getRssi, METH_VARARGS, "Returns RSSI"},
+    {"getSenderId", py_getSenderId, METH_VARARGS, "Returns Sender ID"},
+
+    {"getData", py_getData, METH_VARARGS, "Get data"},
+
+    {"send", py_send, METH_VARARGS, "Send data"},
+
     {NULL, NULL, 0, NULL}
 };
 
